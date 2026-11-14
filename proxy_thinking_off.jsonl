@@ -4188,3 +4188,12 @@
 {"t": 1794655592.1539733, "incoming_max": 4000, "sent_max": 8192, "finish": "stop", "tokens": 3406, "content_empty": false, "thinking_off": true}
 {"t": 1794655678.9467947, "incoming_max": 4000, "sent_max": 8192, "finish": "stop", "tokens": 6967, "content_empty": false, "thinking_off": true}
 {"t": 1794655729.5332744, "incoming_max": 4000, "sent_max": 8192, "finish": "stop", "tokens": 3827, "content_empty": false, "thinking_off": true}
+{"t": 1794655839.561124, "incoming_max": 4000, "sent_max": 8192, "finish": "length", "tokens": 8192, "content_empty": false, "thinking_off": true}
+{"t": 1794655944.6996915, "incoming_max": 4000, "sent_max": 8192, "finish": "length", "tokens": 8192, "content_empty": false, "thinking_off": true}
+{"t": 1794655965.6027765, "incoming_max": 4000, "sent_max": 8192, "finish": "stop", "tokens": 1451, "content_empty": false, "thinking_off": true}
+{"t": 1794656067.8767762, "incoming_max": 4000, "sent_max": 8192, "finish": "length", "tokens": 8192, "content_empty": false, "thinking_off": true}
+{"t": 1794656096.8331528, "incoming_max": 4000, "sent_max": 8192, "finish": "stop", "tokens": 2409, "content_empty": false, "thinking_off": true}
+{"t": 1794656155.1961596, "incoming_max": 4000, "sent_max": 8192, "finish": "stop", "tokens": 4773, "content_empty": false, "thinking_off": true}
+{"t": 1794656283.9504604, "incoming_max": 4000, "sent_max": 8192, "finish": "length", "tokens": 8192, "content_empty": false, "thinking_off": true}
+{"t": 1794656397.6209671, "incoming_max": 4000, "sent_max": 8192, "finish": "length", "tokens": 8192, "content_empty": false, "thinking_off": true}
+{"t": 1794656503.7334254, "incoming_max": 4000, "sent_max": 8192, "finish": "length", "tokens": 8192, "content_empty": false, "thinking_off": true}

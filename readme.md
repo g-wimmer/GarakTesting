@@ -16,9 +16,8 @@ I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVID
 5. [Results](#results)
 6. [Analysis](#analysis)
 7. [Limitations](#limitations)
-8. [Reproducing this](#reproducing-this)
-9. [Next steps](#next-steps)
-10. [Update log](#update-log)
+8. [Reproducing tests](#how-to-reproduce-tests)
+
 
 ## Scope and goals
 
@@ -70,7 +69,7 @@ I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVID
 
 4. **Fix:** Using my proxy, I manually edited the API calls to include a much higher token limit of 8192 after Garak had already applied its own limit. This ensured that the model had enough tokens for both reasoning and generating a respons.
 
-5. **Takeaway:** [One sentence on why validating tool output matters. E.g., "A scanner reporting zero findings is only meaningful if you can show it observed real responses."]
+5. **Takeaway:** Tool output values are only useable if they can be verified. While it may be alluring to accept a 100% success rate at face value, digging deeper can reveal problems in tool setup and response validation.
 
 ## Results
  
@@ -143,7 +142,7 @@ With both thinking on and off, document-embedded injection strategies had higher
 - Detectors are string matching or classifiers. They can miss paraphrased compliance and cannot judge partial compliance.
 - Model-level testing only. No application context (system prompt, tools, RAG) in these results.
 
-## How to Reproduce Results
+## How to Reproduce Tests
  
 ```powershell
 # 1. Environment
