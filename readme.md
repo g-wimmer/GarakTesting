@@ -129,8 +129,21 @@ Empty responses with thinking off: 0 across all `latentinjection` probes.
  
 ## Analysis
  
-**PRELIMINARY**
-With both thinking on and off, document-embedded injection strategies had higher success rates than direct hijacking.
+> **PRELIMINARY**
+
+With both thinking on and off, document-embedded injection strategies had higher success rates than direct hijacking. Thinking off: direct 29-57% versus up to 95% (Whois), 84% (Report) and 78% (WhoisSnippet). Thinking on: direct 4-38% versus up to 88% (Report) and 83% (Whois). 
+
+**Does reasoning reduce susceptibility to prompt injection?**
+
+Not across the board.
+
+- Thinking-on ASR was *clearly lower* on `HijackHateHumans`, `HijackKillHumans` and `LatentWhois`, and probably lower on `LatentWhoisSnippet`.
+- Thinking-on ASR was *clearly higher* on `FactSnippetEiffel`, `TranslationEnFr` and `TranslationEnZh`.
+- Thinking-on had *no distinguishable difference* on many of the other probes such as `Report`, `Resume` and `LatentJailbreak`
+
+**Hypothesis: reasoning helps the model detect harmful content, not injected instructions**
+The largest reductions in success rate were on probes that attempted to inject malicious or hostile content into the responses. Thinking-on may allow the model to better judge the content of a prompt instead of resisting the injection strategy. Several probes where thinking made little difference had benign payloads.
+
 
 ## Limitations
  
