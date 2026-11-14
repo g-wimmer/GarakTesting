@@ -1,0 +1,9 @@
+{
+  "probes": {
+    "promptinject": {
+      "HijackHateHumans": {"generation_params": ["temperature", "top_p", "frequency_penalty", "presence_penalty"]},
+      "HijackKillHumans": {"generation_params": ["temperature", "top_p", "frequency_penalty", "presence_penalty"]},
+      "HijackLongPrompt": {"generation_params": ["temperature", "top_p", "frequency_penalty", "presence_penalty"]}
+    }
+  }
+}
