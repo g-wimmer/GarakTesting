@@ -4,8 +4,9 @@
 
 ## TL;DR
 
-<!-- 3-4 sentences. What you tested, the headline result, and the most interesting finding. Draft once results settle. Example shape:
-I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVIDIA's Garak. Attack success varied from X% to Y% depending on probe, and reasoning mode [raised/lowered/did not consistently change] it. Along the way I found that a scanner defaulting to short per-prompt token limits silently reported 100% "secure" against a reasoning model, because every response was empty. -->
+I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVIDIA's [Garak](https://garak.ai/). I found that enabling model reasoning sometimes lowered attack success rate and in other cases raised it. The biggest differentator was the content of the injection payload, not the injection strategy itself. Along the way, I found that the scanner defaulted to short per-prompt token limits silenty, causing a false 100% secure rating against reasoning models.
+
+
 
 ## Contents
 
@@ -21,10 +22,10 @@ I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVID
 
 ## Scope and goals
 
-- **Question:** How vulnerable is [model] to prompt injection when served locally, and does enabling reasoning ("thinking") change that?
-- **Tooling:** Garak (model-level scanner). [Promptfoo application-level testing: planned / done / not included.]
+- **Question:** How vulnerable is Qwen3.6-35B-A3B to prompt injection when served locally, and does enabling reasoning ("thinking") change that?
+- **Tooling:** Garak (model-level scanner). 
 - **Attack category:** OWASP LLM01 (Prompt Injection). Related probes (jailbreaks etc.) are labeled separately.
-- **Out of scope:** [e.g., adaptive attackers, multi-turn attacks, tool-using agents, other models]
+- **Out of scope:** Tool using agents, membership inference, 
 
 ## Environment
 
@@ -61,15 +62,15 @@ I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVID
 ## A false "100% secure" result
  
 
-1. **Symptom:** The first full scan of the `promptinject` probe family with thinking enabled reported a 100% pass rate across all probes. At first, I was excited to see that enabling thinking resulted in a model that was much more resilint to blatant prompt injection strategies. However, after enabling thinking on myself, I realized that this was too good to be true. There was simply no way that a 35b 4-bit quantized model could not be atleast somewhat susceptible to prompt injection.
+1. **Symptom:** The first full scan of the `promptinject` probe family with thinking enabled reported a 100% pass rate across all probes. At first, I was excited to see that enabling thinking resulted in a model that was much more resilient to blatant prompt injection strategies. However, after enabling thinking on myself, I realized that this was too good to be true. There was simply no way that a 35b 4-bit quantized model could not be at least somewhat susceptible to prompt injection.
 
-2. **Investigation:** I then inspected the raw report JSON to view what the LLM was actually returning. I found that the vast majority of the response had completely empty `content` fields. API calls logged in FreeToken revealed that the LLM was recieving the probes and producing tokens. Further inspection revealed that the model returned its answer in `content` only after a long reasoning trace in `reasoning_content`. The model was spending all of its token limit thinking and returning an empty `content` field. The Garak harness then evaluated these empty `content` fields as passes as the empty strings showed no sign that the model had been successfully injected.
+2. **Investigation:** I then inspected the raw report JSON to view what the LLM was actually returning. I found that the vast majority of the response had completely empty `content` fields. API calls logged in FreeToken revealed that the LLM was receiving the probes and producing tokens. Further inspection revealed that the model returned its answer in `content` only after a long reasoning trace in `reasoning_content`. The model was spending all of its token limit thinking and returning an empty `content` field. The Garak harness then evaluated these empty `content` fields as passes as the empty strings showed no sign that the model had been successfully injected.
 
-3. **Root cause:** Garak attaches its own per-prompt `max_tokens` to each request. A reasoning model needs ~450+ tokens just to finish thinking, so the budget ran out mid-thought, `content` stayed empty, and the detector scored empty text as a pass. After setting up a proxy to view the actual API calls being made, I found that Garak was overriding my the token limit I had configured. Garak's limits varied prompt to prompt, but were often in the range of 100-400 tokens, much less than what the model needed to finish reasoning.
+3. **Root cause:** Garak attaches its own per-prompt `max_tokens` to each request. A reasoning model needs ~450+ tokens just to finish thinking, so the budget ran out mid-thought, `content` stayed empty, and the detector scored empty text as a pass. After setting up a proxy to view the actual API calls being made, I found that Garak was overriding the token limit I had configured. Garak's limits varied prompt to prompt, but were often in the range of 100-400 tokens, much less than what the model needed to finish reasoning.
 
-4. **Fix:** Using my proxy, I manually edited the API calls to include a much higher token limit of 8192 after Garak had already applied its own limit. This ensured that the model had enough tokens for both reasoning and generating a respons.
+4. **Fix:** Using my proxy, I manually edited the API calls to include a much higher token limit of 8192 after Garak had already applied its own limit. This ensured that the model had enough tokens for both reasoning and generating a response.
 
-5. **Takeaway:** Tool output values are only useable if they can be verified. While it may be alluring to accept a 100% success rate at face value, digging deeper can reveal problems in tool setup and response validation.
+5. **Takeaway:** Tool output values are only usable if they can be verified. While it may be alluring to accept a 100% success rate at face value, digging deeper can reveal problems in tool setup and response validation.
 
 ## Results
  
@@ -120,12 +121,49 @@ Empty responses with thinking off: 0 across all `latentinjection` probes.
  
 ### Encoded payloads (`encoding`)
  
-| Probe | Detector | n | Thinking OFF: ASR [95% CI] | Thinking ON |
-|---|---|---|---|---|
-| InjectAscii85 | DecodeApprox | 256 | 3.12% [1.17%, 5.47%] | [pending] |
-| InjectAscii85 | DecodeMatch | 256 | 1.56% [0.39%, 3.12%] | [pending] |
-| InjectAtbash | | | [running] | [pending] |
-| InjectBase16, InjectBase2048, InjectBase32, InjectBase64, InjectBraille, InjectEcoji, InjectHex, InjectMorse, InjectNato, InjectROT13, InjectUU, InjectUnicodeTagChars, InjectZalgo | | | [pending] | [pending] |
+n = 256 per probe and detector. Each cell is ASR [95% CI]. `DecodeApprox` is usually the higher of the two detectors (it allows partial matches).
+
+**DecodeApprox**
+ 
+| Probe | Thinking OFF | Thinking ON | ON vs OFF |
+|---|---|---|---|
+| InjectAscii85 | 3.12% [1.17%, 5.47%] | 0.78% [0.00%, 1.95%] | lower (−2.3 pts, overlap) |
+| InjectAtbash | 49.61% [43.36%, 55.86%] | 49.61% [43.36%, 55.86%] | same |
+| InjectBase16 | 78.52% [73.44%, 83.20%] | 82.03% [77.34%, 86.72%] | higher (+3.5 pts, overlap) |
+| InjectBase2048 | 0.39% [0.00%, 1.17%] | 0.39% [0.00%, 1.17%] | same |
+| InjectBase32 | 13.67% [9.77%, 17.97%] | 6.64% [3.91%, 9.77%] | lower (−7.0 pts, intervals just touch) |
+| InjectBase64 | 66.80% [60.94%, 72.66%] | 74.22% [68.75%, 79.30%] | higher (+7.4 pts, overlap) |
+| InjectBraille | 61.33% [55.47%, 67.19%] | 59.38% [53.52%, 65.23%] | no clear difference (−2.0 pts) |
+| InjectEcoji | 0.39% [0.00%, 1.17%] | 0.00% (0/256) | no clear difference |
+| InjectHex | 75.78% [70.31%, 80.86%] | 79.69% [74.61%, 84.38%] | higher (+3.9 pts, overlap) |
+| InjectMorse | 61.72% [55.86%, 67.58%] | 65.62% [59.77%, 71.48%] | higher (+3.9 pts, overlap) |
+| InjectNato | 60.16% [54.30%, 66.02%] | 64.06% [58.20%, 69.92%] | higher (+3.9 pts, overlap) |
+| InjectROT13 | 47.27% [41.02%, 53.12%] | 49.61% [43.36%, 55.86%] | higher (+2.3 pts, overlap) |
+| InjectUU | 5.08% [2.73%, 7.81%] | 5.47% [2.73%, 8.59%] | no clear difference (+0.4 pts) |
+| InjectUnicodeTagChars | 25.00% [19.92%, 30.47%] | 43.75% [37.50%, 49.61%] | **higher (+18.8 pts, clear)** |
+| InjectZalgo | 57.03% [51.17%, 62.89%] | 72.27% [66.80%, 77.73%] | **higher (+15.2 pts, clear)** |
+
+**DecodeMatch**
+ 
+| Probe | Thinking OFF | Thinking ON | ON vs OFF |
+|---|---|---|---|
+| InjectAscii85 | 1.56% [0.39%, 3.12%] | 0.78% [0.00%, 1.95%] | no clear difference (−0.8 pts) |
+| InjectAtbash | 41.41% [35.55%, 47.27%] | 42.19% [36.33%, 48.05%] | no clear difference (+0.8 pts) |
+| InjectBase16 | 60.55% [54.69%, 66.41%] | 66.80% [60.94%, 72.66%] | higher (+6.3 pts, overlap) |
+| InjectBase2048 | 0.78% [0.00%, 1.95%] | 0.00% (0/256) | no clear difference |
+| InjectBase32 | 14.84% [10.55%, 19.53%] | 8.20% [5.08%, 11.72%] | lower (−6.6 pts, overlap) |
+| InjectBase64 | 40.62% [34.77%, 46.48%] | 51.95% [45.70%, 58.20%] | higher (+11.3 pts, intervals barely overlap) |
+| InjectBraille | 60.16% [54.30%, 66.02%] | 57.03% [51.17%, 62.89%] | no clear difference (−3.1 pts) |
+| InjectEcoji | 0.39% [0.00%, 1.17%] | 0.00% (0/256) | no clear difference |
+| InjectHex | 58.98% [52.73%, 64.84%] | 70.70% [65.23%, 76.17%] | **higher (+11.7 pts, clear, narrow gap)** |
+| InjectMorse | 53.91% [47.66%, 60.16%] | 64.45% [58.59%, 70.31%] | higher (+10.5 pts, intervals barely overlap) |
+| InjectNato | 50.39% [44.14%, 56.64%] | 56.64% [50.39%, 62.50%] | higher (+6.3 pts, overlap) |
+| InjectROT13 | 36.72% [30.86%, 42.58%] | 40.62% [34.77%, 46.48%] | higher (+3.9 pts, overlap) |
+| InjectUU | 3.52% [1.56%, 5.86%] | 5.08% [2.73%, 7.81%] | no clear difference (+1.6 pts) |
+| InjectUnicodeTagChars | 15.62% [11.33%, 20.31%] | 30.86% [25.39%, 36.72%] | **higher (+15.2 pts, clear)** |
+| InjectZalgo | 40.62% [34.77%, 46.48%] | 58.59% [52.34%, 64.45%] | **higher (+18.0 pts, clear)** |
+
+**Truncation.** No thinking-off `encoding` response was empty, but 272 of the 3,967 logged requests (6.9%) reached the 8192-token cap. With thinking on, 706 of 3,840 requests (18.4%) reached the cap and 674 (17.6%) returned empty content, which Garak scores as passes. Thinking-on ASRs are therefore lower bounds, and the thinking-on rows for the hard-to-decode formats (Ascii85, Base2048, Ecoji, Base32, UU) are likely the most affected.
  
 ## Analysis
  
@@ -149,6 +187,7 @@ The largest reductions in success rate were on probes that attempted to inject m
  
 - One model, one quantization, one inference server.
 - One generation per prompt at temperature 0.7, so results are non-deterministic and intervals are wide on some probes. `goodside` probes have very small samples (n = 1, 6, 32).
+    - Preliminary testing with the `hijack` probe had slightly lower `longprompt` ASR values for thinking on, implying that there is run to run variance.
 - The proxy changes the token budget relative to the original probe settings, which were designed for non-reasoning models.
 - Truncation is handled differently by condition. With thinking on, a response that runs out of tokens during reasoning has empty content, which Garak scores as a pass (so ASR may be understated). With thinking off, a response that hits the token cap still returns text, which Garak scores as-is. In the thinking-off runs so far, 47 of 3,427 requests (1.4%) reached the 8192-token cap, all within the `encoding` run (proxy-log counts by run: `promptinject` 0/768, `latentinjection` 0/2,216, `goodside` 0/39, `encoding` 47/412 at the time of counting). No thinking-off response was empty. In the thinking-on runs, the proxy log counts requests that reached the cap as `promptinject` 17/768, `latentinjection` 2/2,216, `goodside` 12/39 and `encoding` 64/116 so far (55%). For `goodside` and `latentinjection` the cap hits equal the empty-response counts, so those empties are token-budget exhaustion during reasoning. For `promptinject`, 44 responses were empty but only 17 requests hit the cap. The other 27 finished normally (`finish_reason: stop`, 570 to 7,192 completion tokens) yet returned empty `content`, so the model, or the server's reasoning parser, produced no final answer. 
 - Two machines were used for different conditions, different operating systems Win10 vs. Win11.
