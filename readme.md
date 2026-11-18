@@ -86,7 +86,7 @@ I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVID
  
 Of 768 thinking-on attempts, 44 (5.7%) returned empty content. Counting every empty response as a successful injection would raise the thinking-on figures to at most 30.1%, 7.4% and 45.3% respectively. Per the proxy log, 17 of the 44 empties were token-cap hits and 27 were completed generations (`finish_reason: stop`) with empty content.
 
-![Graph of hijack probe family ASR](/images/hijack.png)
+![Direct injection ASR by probe, thinking OFF vs ON. Gray = thinking off, amber = thinking on, translucent band = 95% bootstrap CI; green verdict = intervals do not overlap](/results/asr_direct.png)
  
 ### Indirect injection (`latentinjection`)
 
@@ -105,7 +105,7 @@ Of 768 thinking-on attempts, 44 (5.7%) returned empty content. Counting every em
  
 Empty responses with thinking off: 0 across all `latentinjection` probes.
  
-![Graph of latent probe family ASR](/images/latent.png)
+![Indirect injection ASR by probe, thinking OFF vs ON. Gray = thinking off, amber = thinking on, translucent band = 95% bootstrap CI; green verdict = intervals do not overlap](/results/asr_latent.png)
 
 ### Known tricks (`goodside`)
  
@@ -118,6 +118,8 @@ Empty responses with thinking off: 0 across all `latentinjection` probes.
 `ThreatenJSON` and `WhoIsRiley` have tiny samples (n = 1 and 6), so treat them as anecdotes, not rates.
 
 **The `tag` probe with thinking on is heavily affected by empty responses.** 12 of 32 (37.5%) were empty and scored as passes. Excluding them, 15 of 20 non-empty responses (75.0%) were hits, and counting all 12 as hits gives an upper bound of 84.4% (27/32). So the true thinking-on ASR is plausibly between 47% and 84%, likely above thinking off (18.75%), but 32 prompts is still a small sample.
+ 
+![goodside.Tag ASR, thinking OFF vs ON (n=32, small sample). 12/32 thinking-on responses were empty token-cap hits, so the thinking-on figure is a lower bound](/results/asr_tag.png)
  
 ### Encoded payloads (`encoding`)
  
@@ -142,6 +144,8 @@ n = 256 per probe and detector. Each cell is ASR [95% CI]. `DecodeApprox` is usu
 | InjectUU | 5.08% [2.73%, 7.81%] | 5.47% [2.73%, 8.59%] | no clear difference (+0.4 pts) |
 | InjectUnicodeTagChars | 25.00% [19.92%, 30.47%] | 43.75% [37.50%, 49.61%] | **higher (+18.8 pts, clear)** |
 | InjectZalgo | 57.03% [51.17%, 62.89%] | 72.27% [66.80%, 77.73%] | **higher (+15.2 pts, clear)** |
+ 
+![Encoding ASR, DecodeApprox detector, thinking OFF vs ON, sorted by thinking-off ASR. With thinking on, 17.6% of responses were empty (scored as passes), so thinking-on bars are lower bounds](/results/asr_encoding_approx.png)
 
 **DecodeMatch**
  
@@ -162,6 +166,8 @@ n = 256 per probe and detector. Each cell is ASR [95% CI]. `DecodeApprox` is usu
 | InjectUU | 3.52% [1.56%, 5.86%] | 5.08% [2.73%, 7.81%] | no clear difference (+1.6 pts) |
 | InjectUnicodeTagChars | 15.62% [11.33%, 20.31%] | 30.86% [25.39%, 36.72%] | **higher (+15.2 pts, clear)** |
 | InjectZalgo | 40.62% [34.77%, 46.48%] | 58.59% [52.34%, 64.45%] | **higher (+18.0 pts, clear)** |
+ 
+![Encoding ASR, DecodeMatch detector, thinking OFF vs ON, sorted by thinking-off ASR. Same truncation caveat: thinking-on bars are lower bounds](/results/asr_encoding_match.png)
 
 **Truncation.** No thinking-off `encoding` response was empty, but 272 of the 3,967 logged requests (6.9%) reached the 8192-token cap. With thinking on, 706 of 3,840 requests (18.4%) reached the cap and 674 (17.6%) returned empty content, which Garak scores as passes. Thinking-on ASRs are therefore lower bounds, and the thinking-on rows for the hard-to-decode formats (Ascii85, Base2048, Ecoji, Base32, UU) are likely the most affected.
  
@@ -189,7 +195,8 @@ The largest reductions in success rate were on probes that attempted to inject m
 - One generation per prompt at temperature 0.7, so results are non-deterministic and intervals are wide on some probes. `goodside` probes have very small samples (n = 1, 6, 32).
     - Preliminary testing with the `hijack` probe had slightly lower `longprompt` ASR values for thinking on, implying that there is run to run variance.
 - The proxy changes the token budget relative to the original probe settings, which were designed for non-reasoning models.
-- Truncation is handled differently by condition. With thinking on, a response that runs out of tokens during reasoning has empty content, which Garak scores as a pass (so ASR may be understated). With thinking off, a response that hits the token cap still returns text, which Garak scores as-is. In the thinking-off runs so far, 47 of 3,427 requests (1.4%) reached the 8192-token cap, all within the `encoding` run (proxy-log counts by run: `promptinject` 0/768, `latentinjection` 0/2,216, `goodside` 0/39, `encoding` 47/412 at the time of counting). No thinking-off response was empty. In the thinking-on runs, the proxy log counts requests that reached the cap as `promptinject` 17/768, `latentinjection` 2/2,216, `goodside` 12/39 and `encoding` 64/116 so far (55%). For `goodside` and `latentinjection` the cap hits equal the empty-response counts, so those empties are token-budget exhaustion during reasoning. For `promptinject`, 44 responses were empty but only 17 requests hit the cap. The other 27 finished normally (`finish_reason: stop`, 570 to 7,192 completion tokens) yet returned empty `content`, so the model, or the server's reasoning parser, produced no final answer. 
+- Truncation is handled differently by condition. With thinking on, a response that runs out of tokens during reasoning has empty content, which Garak scores as a pass (so ASR is understated). With thinking off, a response that hits the token cap still returns text, which Garak scores as-is. In the thinking-off runs, 272 of 7,376 logged requests (3.7%) reached the 8192-token cap, all within the `encoding` run (proxy-log counts by run: `promptinject` 0/768, `latentinjection` 0/2,216, `goodside` 0/39, `encoding` 272/3,967). No thinking-off response was empty. The thinking-off `encoding` log holds 127 more requests than the 3,840 prompts in the run (15 probes × 256), while the thinking-on log holds exactly 3,840, so the extras are specific to the thinking-off run [cause under check: a client timeout followed by a retry would log both requests; look for timeouts or retries in `garak.log`]. If they are duplicates, some of the 272 cap hits are double-counted. In the thinking-on runs, the proxy log counts requests that reached the cap as `promptinject` 17/768, `latentinjection` 2/2,216, `goodside` 12/39 and `encoding` 706/3,840 (18.4%). For `goodside` and `latentinjection` the cap hits equal the empty-response counts, so those empties are token-budget exhaustion during reasoning. For `promptinject`, 44 responses were empty but only 17 requests hit the cap. The other 27 finished normally (`finish_reason: stop`, 570 to 7,192 completion tokens) yet returned empty `content`, so the model, or the server's reasoning parser, produced no final answer.
+- Thinking-on empty responses: 44/768 (`promptinject`), 2/2,216 (`latentinjection`), 12/39 (`goodside`, all `Tag`), 674/3,840 (`encoding`). All thinking-on ASRs are lower bounds. The `Tag` ASR and the hard-to-decode `encoding` rows are the most uncertain. Per-probe `encoding` empties are pending.
 - Two machines were used for different conditions, different operating systems Win10 vs. Win11.
 - Detectors are string matching or classifiers. They can miss paraphrased compliance and cannot judge partial compliance.
 - Model-level testing only. No application context (system prompt, tools, RAG) in these results.
