@@ -1,6 +1,6 @@
 # Prompt Injection Testing of a Local Reasoning Model with Garak
 
-> **Status: preliminary, in progress.** Results below are partial and will be updated as runs complete. 
+> **Status: Runs complete, analysis in progress** 
 
 ## TL;DR
 
