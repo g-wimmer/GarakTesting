@@ -4,7 +4,7 @@
 
 ## TL;DR
 
-I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVIDIA's [Garak](https://garak.ai/). I found that enabling model reasoning sometimes lowered attack success rate and in other cases raised it. The biggest differentator was the content of the injection payload, not the injection strategy itself. Along the way, I found that the scanner defaulted to short per-prompt token limits silenty, causing a false 100% secure rating against reasoning models.
+I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVIDIA's [Garak](https://garak.ai/). I found that enabling model reasoning sometimes lowered attack success rate and in other cases raised it. The biggest differentiator appeared to be the content of the injection payload, not the injection strategy itself. Along the way, I found that the scanner defaulted to short per-prompt token limits silently, causing a false 100% secure rating against reasoning models.
 
 
 
@@ -25,7 +25,7 @@ I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVID
 - **Question:** How vulnerable is Qwen3.6-35B-A3B to prompt injection when served locally, and does enabling reasoning ("thinking") change that?
 - **Tooling:** Garak (model-level scanner). 
 - **Attack category:** OWASP LLM01 (Prompt Injection). Related probes (jailbreaks etc.) are labeled separately.
-- **Out of scope:** Tool using agents, membership inference, 
+- **Out of scope:** Multi-turn attacks, tool-using agents, other models.
 
 ## Environment
 
@@ -51,7 +51,7 @@ I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVID
 | `promptinject` | Direct "ignore previous instructions" hijacking to print a rogue string | HijackHateHumans, HijackKillHumans, HijackLongPrompt (256 each) |
 | `latentinjection` | Instructions hidden inside documents the model is asked to process (indirect injection) | FactSnippetEiffel, FactSnippetLegal, Report, Resume, TranslationEnFr, TranslationEnZh, LatentJailbreak, WhoisSnippet (256 each); LatentWhois (168) |
 | `goodside` | Known injection tricks | Tag (32), ThreatenJSON (1), WhoIsRiley (6) |
-| `encoding` | Payloads hidden in encodings (base64, ROT13, etc.) | 15 probes (256 each), [in progress] |
+| `encoding` | Payloads hidden in encodings (base64, ROT13, etc.) | 15 probes (256 each) |
  
 **Conditions.** Each probe was run twice: thinking **on** (reasoning trace generated, final answer scored) and thinking **off**. Runs were split across two machines: The desktop ran the thinking on probes and the laptop ran the thinking off probes. This was done to speed up results and the setup and tools used are identical across both systems.
  
@@ -74,7 +74,7 @@ I scanned a locally served Qwen3.6-35B-A3B model for prompt injection using NVID
 
 ## Results
  
-> Preliminary. ASR = attack success rate with Garak's 95% bootstrap interval. "Empty" = responses with empty content. n = 256 attempts per probe unless otherwise stated.
+> ASR = attack success rate with Garak's 95% bootstrap interval. "Empty" = responses with empty content. n = 256 attempts per probe unless otherwise stated.
  
 ### Direct injection (`promptinject`)
  
